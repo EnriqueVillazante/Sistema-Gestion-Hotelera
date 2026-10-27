@@ -144,21 +144,32 @@ export const GestionTrabajadores: React.FC = () => {
     setTimeout(() => setCopiado(false), 3000);
   };
 
-  // Cambiar estado activo/inactivo
+  // Cambiar estado activo/inactivo con sincronización a Supabase
   const handleToggleEstado = async (id: string, estadoActual: boolean) => {
     const nuevoEstado = !estadoActual;
     setTrabajadores((prev) =>
       prev.map((t) => (t.id === id ? { ...t, activo: nuevoEstado } : t))
     );
-    await alternarEstadoTrabajador(id, nuevoEstado);
+    const res = await alternarEstadoTrabajador(id, nuevoEstado);
+    if (!res.success) {
+      setTrabajadores((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, activo: estadoActual } : t))
+      );
+    }
   };
 
-  // Cambiar rol de trabajador
+  // Cambiar rol de trabajador con sincronización a Supabase
   const handleCambiarRol = async (id: string, nuevoRol: RolUsuario) => {
+    const rolAnterior = trabajadores.find((t) => t.id === id)?.rol;
     setTrabajadores((prev) =>
       prev.map((t) => (t.id === id ? { ...t, rol: nuevoRol } : t))
     );
-    await cambiarRolTrabajador(id, nuevoRol);
+    const res = await cambiarRolTrabajador(id, nuevoRol);
+    if (!res.success && rolAnterior) {
+      setTrabajadores((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, rol: rolAnterior } : t))
+      );
+    }
   };
 
   // Filtros de búsqueda
@@ -188,15 +199,21 @@ export const GestionTrabajadores: React.FC = () => {
       {/* Cabecera Principal y Botón de Acción */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-700/60">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <Shield className="w-3.5 h-3.5" />
-            Control de Personal y Seguridad
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold uppercase tracking-wider">
+              <Shield className="w-3.5 h-3.5" />
+              Control de Personal y Seguridad
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-medium">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Sincronizado con Supabase DB
+            </div>
           </div>
           <h2 className="text-2xl sm:text-3xl font-serif font-bold text-white tracking-tight">
             Gestión de Trabajadores y Perfiles
           </h2>
           <p className="text-sm text-slate-300 mt-1 max-w-2xl">
-            Da de alta al personal oficial del hotel, asigna roles de acceso y controla los estados. Los colaboradores no pueden autorregistrarse públicamente.
+            Nómina oficial de colaboradores conectada a la base de datos de Supabase. Controla accesos, asigna roles y crea cuentas institucionales.
           </p>
         </div>
 
@@ -298,6 +315,7 @@ export const GestionTrabajadores: React.FC = () => {
             <option value="recepcionista">🛎️ Recepción</option>
             <option value="limpieza">🧹 Limpieza</option>
             <option value="admin">👑 Administrador</option>
+            <option value="huesped">🏨 Huésped</option>
           </select>
 
           <select
@@ -417,8 +435,16 @@ export const GestionTrabajadores: React.FC = () => {
                               )}
                             </div>
                             <div className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
-                              <Mail className="w-3.5 h-3.5 text-slate-500" />
-                              {trabajador.email || 'Sin correo asociado'}
+                              {trabajador.email ? (
+                                <>
+                                  <Mail className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>{trabajador.email}</span>
+                                </>
+                              ) : (
+                                <span className="text-[11px] text-slate-500">
+                                  Registrado: {new Date(trabajador.creado_en).toLocaleDateString()}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -457,6 +483,7 @@ export const GestionTrabajadores: React.FC = () => {
                             <option value="recepcionista">Recepción</option>
                             <option value="limpieza">Limpieza</option>
                             <option value="admin">Admin</option>
+                            <option value="huesped">Huésped</option>
                           </select>
                         </div>
                       </td>
@@ -480,14 +507,12 @@ export const GestionTrabajadores: React.FC = () => {
                       <td className="py-4 px-4 sm:px-6 text-right">
                         <button
                           onClick={() => {
-                            if (trabajador.email) {
-                              setCredencialesGeneradas({
-                                nombre: trabajador.nombre_completo,
-                                email: trabajador.email,
-                                password: '(Contraseña actual del trabajador)',
-                                rol: trabajador.rol,
-                              });
-                            }
+                            setCredencialesGeneradas({
+                              nombre: trabajador.nombre_completo,
+                              email: trabajador.email || `ID: ${trabajador.id}`,
+                              password: '(Gestionada en Supabase Auth)',
+                              rol: trabajador.rol,
+                            });
                           }}
                           title="Ver y copiar formato de acceso"
                           className="px-2.5 py-1.5 rounded-lg bg-slate-900/60 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white text-xs font-medium transition-all inline-flex items-center gap-1.5 cursor-pointer"
@@ -624,7 +649,7 @@ export const GestionTrabajadores: React.FC = () => {
                       setNombreCompleto(e.target.value);
                       if (!email) sugerirEmail(e.target.value);
                     }}
-                    placeholder="Ej. Roberto Siles Vargas"
+                    placeholder="Ej. Juan Pérez"
                     className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-800/80 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-all"
                   />
                 </div>

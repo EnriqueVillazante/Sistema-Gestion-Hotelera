@@ -314,6 +314,7 @@ export interface Database {
           servicio_id: string;
           cantidad?: number;
           precio_unitario: number;
+          subtotal?: number;
           fecha_consumo?: string;
         };
         Update: {
@@ -322,6 +323,7 @@ export interface Database {
           servicio_id?: string;
           cantidad?: number;
           precio_unitario?: number;
+          subtotal?: number;
           fecha_consumo?: string;
         };
         Relationships: [];

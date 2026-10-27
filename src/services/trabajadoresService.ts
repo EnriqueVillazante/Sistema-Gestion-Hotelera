@@ -20,160 +20,163 @@ export interface TrabajadorResultado {
   };
 }
 
-// Personal inicial por defecto si la base de datos aún no tiene registros de personal
-const TRABAJADORES_INICIALES_DEMO: Perfil[] = [
-  {
-    id: 't1111111-1111-1111-1111-111111111111',
-    nombre_completo: 'Lic. Roberto Siles V.',
-    email: 'admin@hotelillimani.bo',
-    telefono: '+591 71542100',
-    rol: 'admin',
-    activo: true,
-    creado_en: new Date().toISOString(),
-  },
-  {
-    id: 't2222222-2222-2222-2222-222222222222',
-    nombre_completo: 'Patricia Mercado Arce',
-    email: 'patricia.recepcion@hotelillimani.bo',
-    telefono: '+591 72033410',
-    rol: 'recepcionista',
-    activo: true,
-    creado_en: new Date().toISOString(),
-  },
-  {
-    id: 't3333333-3333-3333-3333-333333333333',
-    nombre_completo: 'Javier Quispe Mamani',
-    email: 'javier.recepcion@hotelillimani.bo',
-    telefono: '+591 73519822',
-    rol: 'recepcionista',
-    activo: true,
-    creado_en: new Date().toISOString(),
-  },
-  {
-    id: 't4444444-4444-4444-4444-444444444444',
-    nombre_completo: 'Elena Choquehuanca F.',
-    email: 'elena.limpieza@hotelillimani.bo',
-    telefono: '+591 70685233',
-    rol: 'limpieza',
-    activo: true,
-    creado_en: new Date().toISOString(),
-  },
-  {
-    id: 't5555555-5555-5555-5555-555555555555',
-    nombre_completo: 'Marcos Ticona Flores',
-    email: 'marcos.limpieza@hotelillimani.bo',
-    telefono: '+591 71920044',
-    rol: 'limpieza',
-    activo: true,
-    creado_en: new Date().toISOString(),
-  },
-];
-
-const LOCAL_STORAGE_KEY = 'sagh_trabajadores_cache';
-
 /**
- * Obtener lista de trabajadores del hotel (roles admin, recepcionista, limpieza)
+ * Obtener la lista real de trabajadores directamente desde la tabla 'perfiles' de Supabase
+ * (Sin ningún dato de prueba ni usuarios aleatorios).
  */
 export async function obtenerTrabajadores(): Promise<Perfil[]> {
   try {
+    // Limpiar cualquier residuo de caché obsoleto en el navegador
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('sagh_trabajadores_cache');
+      localStorage.removeItem('sagh_trabajadores_emails');
+    }
+
     const { data, error } = await supabase
       .from('perfiles')
-      .select('*')
-      .in('rol', ['admin', 'recepcionista', 'limpieza'])
+      .select('id, nombre_completo, telefono, rol, activo, creado_en')
       .order('creado_en', { ascending: false });
 
-    if (!error && data && data.length > 0) {
-      // Guardar respaldo en caché local
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
-      return data;
+    if (error) {
+      console.error('[TrabajadoresService] Error al consultar perfiles en Supabase:', error.message);
+      return [];
     }
 
-    // Si la tabla no tiene trabajadores o dio error por RLS, recuperar de caché o demo
-    const enCache = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (enCache) {
-      try {
-        return JSON.parse(enCache);
-      } catch {
-        // Fallback a demo
-      }
-    }
-
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(TRABAJADORES_INICIALES_DEMO));
-    return TRABAJADORES_INICIALES_DEMO;
+    return data || [];
   } catch (err) {
-    console.warn('[TrabajadoresService] Usando datos de respaldo:', err);
-    return TRABAJADORES_INICIALES_DEMO;
+    console.error('[TrabajadoresService] Excepción al obtener perfiles de Supabase:', err);
+    return [];
   }
 }
 
 /**
- * Dar de alta a un nuevo trabajador creando su cuenta en Supabase Auth y su registro en 'perfiles'
- * sin cerrar la sesión activa del Administrador.
+ * Registrar un nuevo trabajador en Supabase Auth y en la tabla 'perfiles'
+ * Asegura que se inserte en 'perfiles' con su rol correspondiente sin tocar la tabla 'huespedes'.
  */
 export async function registrarNuevoTrabajador(
   datos: NuevoTrabajadorPayload
 ): Promise<TrabajadorResultado> {
   try {
+    const emailLimpio = datos.email.trim().toLowerCase();
     const clienteAislado = crearClienteAuthAislado();
 
-    // 1. Crear el usuario en Supabase Auth sin afectar localStorage
-    let userId: string = crypto.randomUUID();
-
-    try {
-      const { data: authData, error: authError } = await clienteAislado.auth.signUp({
-        email: datos.email.trim().toLowerCase(),
-        password: datos.password,
-        options: {
-          data: {
-            nombre_completo: datos.nombre_completo.trim(),
-            rol: datos.rol,
-            telefono: datos.telefono?.trim() || null,
-          },
+    // 1. Crear el usuario en Supabase Auth con cliente aislado (para no cerrar la sesión del admin)
+    const { data: authData, error: authError } = await clienteAislado.auth.signUp({
+      email: emailLimpio,
+      password: datos.password,
+      options: {
+        data: {
+          nombre_completo: datos.nombre_completo.trim(),
+          rol: datos.rol,
+          telefono: datos.telefono?.trim() || null,
         },
-      });
+      },
+    });
 
-      if (!authError && authData?.user) {
-        userId = authData.user.id;
-      } else if (authError) {
-        console.warn('[TrabajadoresService] Nota de registro Auth:', authError.message);
-      }
-    } catch (authEx) {
-      console.warn('[TrabajadoresService] Fallback directo a perfiles:', authEx);
+    if (authError) {
+      console.error('[TrabajadoresService] Error en Supabase Auth:', authError.message);
+      return {
+        success: false,
+        error: authError.message.includes('already registered')
+          ? 'Este correo electrónico ya está registrado en el sistema.'
+          : authError.message,
+      };
     }
 
-    // 2. Insertar o actualizar el perfil en la tabla 'perfiles'
-    const nuevoPerfil: Perfil = {
-      id: userId,
+    const nuevoUserId = authData?.user?.id;
+    if (!nuevoUserId) {
+      return { success: false, error: 'No se pudo generar el usuario en Supabase Auth.' };
+    }
+
+    // 2. Obtener el token de acceso del nuevo usuario para cumplir con las políticas RLS
+    let tokenAuth = authData.session?.access_token || null;
+
+    if (!tokenAuth) {
+      // Si la sesión no vino en el signUp, autenticarse en el cliente aislado para obtener el token
+      const { data: loginData } = await clienteAislado.auth.signInWithPassword({
+        email: emailLimpio,
+        password: datos.password,
+      });
+      tokenAuth = loginData?.session?.access_token || null;
+    }
+
+    // 3. Datos exactos para insertar en la tabla 'perfiles' (según el esquema oficial)
+    const payloadPerfil = {
+      id: nuevoUserId,
       nombre_completo: datos.nombre_completo.trim(),
-      email: datos.email.trim().toLowerCase(),
+      telefono: datos.telefono?.trim() || null,
+      rol: datos.rol,
+      activo: true,
+    };
+
+    let guardadoExitoso = false;
+    let mensajeError: string | null = null;
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    // A) Inserción directa en REST API usando el token del nuevo usuario (cumple RLS auth.uid() = id)
+    if (tokenAuth && supabaseUrl && supabaseAnonKey) {
+      try {
+        const respuesta = await fetch(`${supabaseUrl}/rest/v1/perfiles`, {
+          method: 'POST',
+          headers: {
+            apikey: supabaseAnonKey,
+            Authorization: `Bearer ${tokenAuth}`,
+            'Content-Type': 'application/json',
+            Prefer: 'resolution=merge-duplicates,return=representation',
+          },
+          body: JSON.stringify(payloadPerfil),
+        });
+
+        if (respuesta.ok) {
+          guardadoExitoso = true;
+        } else {
+          const txt = await respuesta.text();
+          console.warn('[TrabajadoresService] Inserción REST con token arrojó:', respuesta.status, txt);
+          mensajeError = txt;
+        }
+      } catch (exRest) {
+        console.warn('[TrabajadoresService] Excepción REST:', exRest);
+      }
+    }
+
+    // B) Reintento con la sesión del Administrador en caso de que RLS permita inserción por admin
+    if (!guardadoExitoso) {
+      const { error: adminErr } = await supabase
+        .from('perfiles')
+        .upsert(payloadPerfil);
+
+      if (!adminErr) {
+        guardadoExitoso = true;
+      } else {
+        console.error('[TrabajadoresService] Inserción con cliente Admin:', adminErr.message);
+        mensajeError = adminErr.message;
+      }
+    }
+
+    if (!guardadoExitoso) {
+      return {
+        success: false,
+        error: `El usuario fue creado en Auth, pero no se pudo insertar en la tabla perfiles: ${mensajeError || 'Permisos RLS insuficientes'}`,
+      };
+    }
+
+    const nuevoPerfil: Perfil = {
+      id: nuevoUserId,
+      nombre_completo: datos.nombre_completo.trim(),
+      email: emailLimpio,
       telefono: datos.telefono?.trim() || null,
       rol: datos.rol,
       activo: true,
       creado_en: new Date().toISOString(),
     };
 
-    const { error: perfilError } = await supabase
-      .from('perfiles')
-      .upsert(nuevoPerfil);
-
-    if (perfilError) {
-      console.warn('[TrabajadoresService] Error al guardar en Supabase perfiles:', perfilError);
-    }
-
-    // 3. Actualizar caché local de trabajadores
-    try {
-      const actuales = await obtenerTrabajadores();
-      const actualizados = [nuevoPerfil, ...actuales.filter((t) => t.id !== userId)];
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(actualizados));
-    } catch {
-      // Ignorar error de caché
-    }
-
     return {
       success: true,
       trabajador: nuevoPerfil,
       credenciales: {
-        email: datos.email.trim().toLowerCase(),
+        email: emailLimpio,
         password: datos.password,
         rol: datos.rol,
       },
@@ -185,7 +188,7 @@ export async function registrarNuevoTrabajador(
 }
 
 /**
- * Cambiar el estado activo / inactivo de un trabajador
+ * Actualizar el estado activo/inactivo de un trabajador en la base de datos de Supabase
  */
 export async function alternarEstadoTrabajador(
   id: string,
@@ -198,28 +201,21 @@ export async function alternarEstadoTrabajador(
       .eq('id', id);
 
     if (error) {
-      console.warn('[TrabajadoresService] Error actualizando en Supabase:', error);
-    }
-
-    // Actualizar respaldo local
-    const enCache = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (enCache) {
-      const lista: Perfil[] = JSON.parse(enCache);
-      const actualizados = lista.map((t) => (t.id === id ? { ...t, activo: nuevoEstado } : t));
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(actualizados));
+      console.error('[TrabajadoresService] Error actualizando estado en Supabase:', error.message);
+      return { success: false, error: error.message };
     }
 
     return { success: true };
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'No se pudo cambiar el estado',
+      error: err instanceof Error ? err.message : 'Error de conexión con la base de datos',
     };
   }
 }
 
 /**
- * Cambiar el rol asignado a un trabajador
+ * Actualizar el rol de un trabajador en la base de datos de Supabase
  */
 export async function cambiarRolTrabajador(
   id: string,
@@ -232,22 +228,15 @@ export async function cambiarRolTrabajador(
       .eq('id', id);
 
     if (error) {
-      console.warn('[TrabajadoresService] Error actualizando rol en Supabase:', error);
-    }
-
-    // Actualizar respaldo local
-    const enCache = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (enCache) {
-      const lista: Perfil[] = JSON.parse(enCache);
-      const actualizados = lista.map((t) => (t.id === id ? { ...t, rol: nuevoRol } : t));
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(actualizados));
+      console.error('[TrabajadoresService] Error actualizando rol en Supabase:', error.message);
+      return { success: false, error: error.message };
     }
 
     return { success: true };
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'No se pudo actualizar el rol',
+      error: err instanceof Error ? err.message : 'Error de conexión con la base de datos',
     };
   }
 }

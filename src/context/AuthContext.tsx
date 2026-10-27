@@ -97,7 +97,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         try {
-          await supabase.from('perfiles').upsert(perfilAdmin);
+          const { email: _emailAdmin, ...perfilDb } = perfilAdmin;
+          await supabase.from('perfiles').upsert(perfilDb);
         } catch (e) {
           console.warn('[Auth] Nota al sincronizar perfil admin:', e);
         }

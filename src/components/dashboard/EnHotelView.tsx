@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
 import type { ReservaConDetalle, ConsumoReserva, CatalogoServicio } from '../../types/database';
-import { SERVICIOS_SEED, type ServicioMock } from '../../data/hotelData';
 import {
   BedDouble,
   Receipt,
@@ -11,14 +11,16 @@ import {
   Sparkles,
   LogOut,
   Coffee,
-  Sandwich,
   GlassWater,
   Droplets,
   Cookie,
   AlertCircle,
   FileCheck,
   X,
-  CreditCard
+  CreditCard,
+  Car,
+  Compass,
+  RefreshCw,
 } from 'lucide-react';
 
 interface EnHotelViewProps {
@@ -34,18 +36,63 @@ export const EnHotelView: React.FC<EnHotelViewProps> = ({
   onRealizarCheckOut,
   cargando,
 }) => {
-  const [categoriaFiltro, setCategoriaFiltro] = useState<string>('Todos');
-  const [servicioSeleccionado, setServicioSeleccionado] = useState<ServicioMock | null>(null);
+  const [servicios, setServicios] = useState<CatalogoServicio[]>([]);
+  const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
+  const [categoriaFiltro, setCategoriaFiltro] = useState<string>('todos');
+  const [servicioSeleccionado, setServicioSeleccionado] = useState<CatalogoServicio | null>(null);
   const [cantidad, setCantidad] = useState<number>(1);
   const [modalCheckOutAbierto, setModalCheckOutAbierto] = useState(false);
   const [notificacion, setNotificacion] = useState<string | null>(null);
 
-  // Filtrar servicios del catálogo
-  const categorias = ['Todos', 'Restaurante', 'Minibar', 'Lavandería', 'Spa & Relax'];
+  // Cargar catálogo de servicios real desde la base de datos de Supabase
+  const cargarServiciosDesdeSupabase = async () => {
+    try {
+      setCargandoCatalogo(true);
+      const { data, error } = await supabase
+        .from('catalogo_servicios')
+        .select('*')
+        .eq('activo', true)
+        .order('categoria', { ascending: true })
+        .order('nombre', { ascending: true });
+
+      if (error) {
+        console.error('[EnHotelView] Error al consultar catalogo_servicios:', error.message);
+      } else if (data) {
+        setServicios(data);
+      }
+    } catch (err) {
+      console.error('[EnHotelView] Excepción cargando servicios:', err);
+    } finally {
+      setCargandoCatalogo(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarServiciosDesdeSupabase();
+  }, []);
+
+  // Etiquetas legibles para las categorías de la base de datos
+  const NOMBRES_CATEGORIAS: Record<string, string> = {
+    todos: 'Todos los Servicios',
+    alimentos_bebidas: '🍽️ Restaurante y Bar',
+    minibar: '🍾 Minibar',
+    lavanderia: '🧺 Lavandería',
+    servicio_extra: '✨ Servicios Extra',
+    transporte: '🚗 Transporte',
+    tour: '🏔️ Tours y Paseos',
+  };
+
+  // Extraer las categorías únicas existentes en la base de datos
+  const categoriasDisponibles = [
+    'todos',
+    ...Array.from(new Set(servicios.map((s) => s.categoria))),
+  ];
+
+  // Filtrar servicios
   const serviciosFiltrados =
-    categoriaFiltro === 'Todos'
-      ? SERVICIOS_SEED
-      : SERVICIOS_SEED.filter((s) => s.categoria === categoriaFiltro);
+    categoriaFiltro === 'todos'
+      ? servicios
+      : servicios.filter((s) => s.categoria === categoriaFiltro);
 
   // Cálculo del Folio de la Habitación
   const totalAlojamiento = Number(reserva.total_alojamiento) || 0;
@@ -54,52 +101,36 @@ export const EnHotelView: React.FC<EnHotelViewProps> = ({
   const totalPagos = (reserva.pagos || []).reduce((acc, p) => acc + Number(p.monto || 0), 0);
   const saldoPendiente = totalAlojamiento + totalConsumos - totalPagos;
 
-  // Renderizar icono por categoría/servicio
-  const renderIcono = (iconoNombre: string) => {
-    switch (iconoNombre) {
-      case 'UtensilsCrossed':
-        return <UtensilsCrossed className="w-5 h-5" />;
-      case 'Coffee':
-        return <Coffee className="w-5 h-5" />;
-      case 'Sandwich':
-        return <Sandwich className="w-5 h-5" />;
-      case 'Wine':
-        return <Wine className="w-5 h-5" />;
-      case 'GlassWater':
-        return <GlassWater className="w-5 h-5" />;
-      case 'Droplets':
-        return <Droplets className="w-5 h-5" />;
-      case 'Cookie':
-        return <Cookie className="w-5 h-5" />;
-      case 'Shirt':
-        return <Shirt className="w-5 h-5" />;
-      case 'Sparkles':
-      default:
-        return <Sparkles className="w-5 h-5" />;
-    }
+  // Iconos asignados según el tipo y nombre del producto en la base de datos
+  const renderIconoServicio = (nombre: string, categoria: string) => {
+    const n = nombre.toLowerCase();
+    const c = categoria.toLowerCase();
+    if (n.includes('café') || n.includes('desayuno')) return <Coffee className="w-5 h-5 text-amber-400" />;
+    if (n.includes('té') || n.includes('coca') || n.includes('agua')) return <GlassWater className="w-5 h-5 text-blue-400" />;
+    if (n.includes('cerveza') || n.includes('vino') || n.includes('singani') || n.includes('cóctel') || n.includes('chuflay')) return <Wine className="w-5 h-5 text-rose-400" />;
+    if (n.includes('sándwich') || n.includes('salteña') || n.includes('silpancho') || n.includes('sopa') || n.includes('marraqueta') || c.includes('alimentos')) return <UtensilsCrossed className="w-5 h-5 text-amber-400" />;
+    if (n.includes('lavandería') || n.includes('planchado') || c.includes('lavanderia')) return <Shirt className="w-5 h-5 text-cyan-400" />;
+    if (n.includes('oxigeno') || n.includes('soroche')) return <Droplets className="w-5 h-5 text-emerald-400" />;
+    if (c.includes('transporte') || n.includes('traslado') || n.includes('aeropuerto')) return <Car className="w-5 h-5 text-indigo-400" />;
+    if (c.includes('tour') || n.includes('teleférico')) return <Compass className="w-5 h-5 text-amber-300" />;
+    if (c.includes('minibar') || n.includes('papas') || n.includes('chocolate') || n.includes('red bull')) return <Cookie className="w-5 h-5 text-amber-300" />;
+    return <Sparkles className="w-5 h-5 text-amber-400" />;
   };
 
-  // Solicitar consumo a la habitación
+  // Solicitar consumo a la habitación persistido en Supabase
   const handleConfirmarConsumo = async () => {
     if (!servicioSeleccionado) return;
 
-    const subtotal = servicioSeleccionado.precio_unitario * cantidad;
+    const subtotal = Number(servicioSeleccionado.precio_unitario) * cantidad;
     const nuevoConsumo: ConsumoReserva & { catalogo_servicios?: CatalogoServicio | null } = {
-      id: `cons-${Date.now()}`,
+      id: crypto.randomUUID(),
       reserva_id: reserva.id,
-      servicio_id: servicioSeleccionado.id,
+      servicio_id: servicioSeleccionado.id, // UUID real de la tabla catalogo_servicios
       cantidad: cantidad,
-      precio_unitario: servicioSeleccionado.precio_unitario,
+      precio_unitario: Number(servicioSeleccionado.precio_unitario),
       subtotal: subtotal,
       fecha_consumo: new Date().toISOString(),
-      catalogo_servicios: {
-        id: servicioSeleccionado.id,
-        nombre: servicioSeleccionado.nombre,
-        categoria: servicioSeleccionado.categoria,
-        precio_unitario: servicioSeleccionado.precio_unitario,
-        activo: true,
-        creado_en: new Date().toISOString(),
-      },
+      catalogo_servicios: servicioSeleccionado,
     };
 
     await onAgregarConsumo(nuevoConsumo);
@@ -148,89 +179,109 @@ export const EnHotelView: React.FC<EnHotelViewProps> = ({
             onClick={() => setModalCheckOutAbierto(true)}
             className="px-5 py-3 rounded-xl bg-slate-950 hover:bg-slate-900 text-amber-400 hover:text-amber-300 text-xs font-bold uppercase tracking-wider transition-all shadow-lg flex items-center gap-2 cursor-pointer border border-amber-400/30"
           >
-            <LogOut className="w-4 h-4 text-rose-400" />
-            <span>Finalizar Estancia (Check-out)</span>
+            <LogOut className="w-4 h-4" />
+            <span>Check-out Express</span>
           </button>
         </div>
       </div>
 
-      {/* Layout de dos columnas: Servicios a la Habitación vs Folio de Cuenta */}
+      {/* Layout de Contenido: Catálogo de Servicios y Folio */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Columna 1 y 2: Catálogo de Servicios y Comidas (TODO LO QUE OFRECEMOS) */}
+        {/* Columnas 1 y 2: Catálogo de Servicios de Supabase */}
         <div className="lg:col-span-2 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
             <div>
-              <h2 className="text-xl font-serif font-bold text-white tracking-tight flex items-center gap-2">
-                <UtensilsCrossed className="w-5 h-5 text-amber-400" />
-                <span>Servicios, Room Service y Minibar</span>
-              </h2>
-              <p className="text-xs text-slate-400">
-                Pide alimentos gourmet, bebidas o aseo directo a tu habitación
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-serif font-bold text-white tracking-tight">
+                  Servicios y Productos del Hotel
+                </h2>
+                <button
+                  onClick={cargarServiciosDesdeSupabase}
+                  title="Recargar catálogo de Supabase"
+                  className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-amber-400 transition-colors"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${cargandoCatalogo ? 'animate-spin text-amber-400' : ''}`} />
+                </button>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Pide directamente a tu habitación con cargo directo a tu folio de cuenta oficial
               </p>
             </div>
 
             {/* Filtros de Categorías */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-              {categorias.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setCategoriaFiltro(cat)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                    categoriaFiltro === cat
-                      ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
-                      : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+              {categoriasDisponibles.map((catKey) => {
+                const label = NOMBRES_CATEGORIAS[catKey] || catKey;
+                return (
+                  <button
+                    key={catKey}
+                    onClick={() => setCategoriaFiltro(catKey)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                      categoriaFiltro === catKey
+                        ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
+                        : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Grid de Servicios */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {serviciosFiltrados.map((servicio) => (
-              <div
-                key={servicio.id}
-                className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 transition-all flex flex-col justify-between group shadow-lg"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="p-2.5 rounded-xl bg-slate-800 text-amber-400 group-hover:scale-105 transition-transform">
-                      {renderIcono(servicio.icono)}
+          {/* Grid de Servicios Reales desde Supabase */}
+          {cargandoCatalogo ? (
+            <div className="p-12 text-center text-slate-400 rounded-3xl bg-slate-900/40 border border-slate-800">
+              <RefreshCw className="w-8 h-8 animate-spin mx-auto text-amber-500 mb-2" />
+              <span>Cargando servicios oficiales desde Supabase...</span>
+            </div>
+          ) : serviciosFiltrados.length === 0 ? (
+            <div className="p-12 text-center text-slate-500 rounded-3xl bg-slate-900/40 border border-slate-800">
+              <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <span>No hay servicios disponibles en esta categoría en la base de datos.</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {serviciosFiltrados.map((servicio) => (
+                <div
+                  key={servicio.id}
+                  className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 transition-all flex flex-col justify-between group shadow-lg"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="p-2.5 rounded-xl bg-slate-800 group-hover:scale-105 transition-transform">
+                        {renderIconoServicio(servicio.nombre, servicio.categoria)}
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300">
+                        {NOMBRES_CATEGORIAS[servicio.categoria] || servicio.categoria}
+                      </span>
                     </div>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300">
-                      {servicio.categoria}
-                    </span>
+
+                    <h3 className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors">
+                      {servicio.nombre}
+                    </h3>
                   </div>
 
-                  <h3 className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors">
-                    {servicio.nombre}
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1 line-clamp-2">
-                    {servicio.descripcion}
-                  </p>
-                </div>
+                  <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                    <span className="text-base font-extrabold text-white">
+                      Bs. {Number(servicio.precio_unitario).toFixed(2)}
+                    </span>
 
-                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between">
-                  <span className="text-base font-extrabold text-white">
-                    Bs. {servicio.precio_unitario}
-                  </span>
-
-                  <button
-                    onClick={() => {
-                      setServicioSeleccionado(servicio);
-                      setCantidad(1);
-                    }}
-                    className="px-3.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-amber-500/30"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Pedir</span>
-                  </button>
+                    <button
+                      onClick={() => {
+                        setServicioSeleccionado(servicio);
+                        setCantidad(1);
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-amber-500/30"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Pedir</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Columna 3: Folio / Cuenta de la Habitación en Tiempo Real */}
@@ -301,7 +352,7 @@ export const EnHotelView: React.FC<EnHotelViewProps> = ({
                           {item.catalogo_servicios?.nombre || 'Servicio'}
                         </span>
                         <span className="text-[10px] text-slate-500">
-                          {item.cantidad} x Bs. {item.precio_unitario}
+                          {item.cantidad} x Bs. {Number(item.precio_unitario).toFixed(2)}
                         </span>
                       </div>
                       <span className="font-mono font-bold text-amber-400 flex-shrink-0">
@@ -323,7 +374,7 @@ export const EnHotelView: React.FC<EnHotelViewProps> = ({
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-[10px] uppercase font-bold tracking-widest text-amber-400">
-                  {servicioSeleccionado.categoria}
+                  {NOMBRES_CATEGORIAS[servicioSeleccionado.categoria] || servicioSeleccionado.categoria}
                 </span>
                 <h3 className="text-lg font-bold text-white mt-0.5">
                   {servicioSeleccionado.nombre}
@@ -331,123 +382,141 @@ export const EnHotelView: React.FC<EnHotelViewProps> = ({
               </div>
               <button
                 onClick={() => setServicioSeleccionado(null)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                className="text-slate-400 hover:text-white p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-400">
-              {servicioSeleccionado.descripcion}
-            </p>
-
-            {/* Selector de Cantidad */}
-            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
-              <span className="text-xs text-slate-300 font-semibold">Cantidad:</span>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setCantidad(Math.max(1, cantidad - 1))}
-                  className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center font-bold text-slate-200 cursor-pointer"
-                >
-                  -
-                </button>
-                <span className="font-bold text-sm text-white w-4 text-center">
-                  {cantidad}
+            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">Precio Unitario:</span>
+                <span className="font-bold text-white">
+                  Bs. {Number(servicioSeleccionado.precio_unitario).toFixed(2)}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setCantidad(cantidad + 1)}
-                  className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center font-bold text-slate-200 cursor-pointer"
-                >
-                  +
-                </button>
+              </div>
+
+              {/* Selector de Cantidad */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                <span className="text-sm text-slate-400">Cantidad:</span>
+                <div className="flex items-center gap-3 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-700">
+                  <button
+                    onClick={() => setCantidad(Math.max(1, cantidad - 1))}
+                    className="text-slate-400 hover:text-white font-bold px-1"
+                  >
+                    -
+                  </button>
+                  <span className="font-bold text-sm w-4 text-center">{cantidad}</span>
+                  <button
+                    onClick={() => setCantidad(cantidad + 1)}
+                    className="text-slate-400 hover:text-white font-bold px-1"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* Total a Pagar */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-sm">
+                <span className="font-semibold text-amber-400">Total a Cargar:</span>
+                <span className="text-lg font-black text-amber-400">
+                  Bs. {(Number(servicioSeleccionado.precio_unitario) * cantidad).toFixed(2)}
+                </span>
               </div>
             </div>
 
-            {/* Total a Cargar */}
-            <div className="flex justify-between items-baseline pt-2 text-sm font-bold">
-              <span className="text-slate-400">Total a Cargar:</span>
-              <span className="text-xl text-amber-400">
-                Bs. {(servicioSeleccionado.precio_unitario * cantidad).toFixed(2)}
-              </span>
+            <div className="text-[11px] text-slate-400 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+              <span>Se cargará al folio oficial de la Habitación {reserva.habitaciones?.numero}.</span>
             </div>
 
-            {/* Botón de Confirmación */}
-            <button
-              onClick={handleConfirmarConsumo}
-              className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm rounded-xl shadow-lg shadow-amber-500/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <FileCheck className="w-4 h-4" />
-              <span>Confirmar y Enviar al Cuarto</span>
-            </button>
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => setServicioSeleccionado(null)}
+                className="py-2.5 rounded-xl border border-slate-700 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmarConsumo}
+                className="py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold transition-colors shadow-lg shadow-amber-500/20"
+              >
+                Confirmar Pedido
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Finalización de Estancia (Check-out) */}
+      {/* Modal de Check-out Express */}
       {modalCheckOutAbierto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-rose-500/30 rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 text-white space-y-6 animate-in zoom-in-95 duration-200">
-            <div className="text-center space-y-2">
-              <div className="w-14 h-14 bg-rose-500/10 text-rose-400 rounded-full flex items-center justify-center mx-auto border border-rose-500/20">
-                <LogOut className="w-7 h-7" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-6 text-white space-y-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-xs uppercase font-bold tracking-widest text-amber-400">
+                  Fin de Estancia
+                </span>
+                <h3 className="text-xl font-bold text-white mt-1">
+                  Check-out de Habitación
+                </h3>
               </div>
-              <h3 className="text-xl font-serif font-bold text-white tracking-tight">
-                ¿Deseas Realizar el Check-out?
-              </h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Al confirmar, se dará por finalizada tu estancia en la{' '}
-                <strong className="text-white">Habitación {reserva.habitaciones?.numero}</strong>. 
-                La habitación pasará inmediatamente a{' '}
-                <strong className="text-amber-400">estado de limpieza</strong> para el personal de camareras.
-              </p>
-            </div>
-
-            {/* Resumen de Liquidación */}
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
-              <div className="flex justify-between text-slate-400">
-                <span>Total Alojamiento:</span>
-                <span className="font-semibold text-white">Bs. {totalAlojamiento.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Total Consumos Habitación:</span>
-                <span className="font-semibold text-white">Bs. {totalConsumos.toFixed(2)}</span>
-              </div>
-              <div className="pt-2 border-t border-slate-800 flex justify-between text-sm font-bold">
-                <span className="text-amber-400">Saldo a Liquidar:</span>
-                <span className="text-white text-base">Bs. {saldoPendiente.toFixed(2)}</span>
-              </div>
-            </div>
-
-            <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 flex items-start gap-2.5 text-xs text-amber-300">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <span>
-                Puedes liquidar tu saldo en recepción en efectivo, tarjeta o QR al momento de entregar tu tarjeta física.
-              </span>
-            </div>
-
-            {/* Botones */}
-            <div className="flex gap-3">
               <button
-                type="button"
                 onClick={() => setModalCheckOutAbierto(false)}
-                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+                className="text-slate-400 hover:text-white p-1 rounded-lg"
               >
-                Seguir en el Hotel
+                <X className="w-5 h-5" />
               </button>
+            </div>
 
+            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2 text-xs">
+              <div className="flex justify-between text-slate-400">
+                <span>Total Hospedaje:</span>
+                <span>Bs. {totalAlojamiento.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>Total Consumos ({consumos.length}):</span>
+                <span>Bs. {totalConsumos.toFixed(2)}</span>
+              </div>
+              {totalPagos > 0 && (
+                <div className="flex justify-between text-emerald-400">
+                  <span>Pagos Registrados:</span>
+                  <span>- Bs. {totalPagos.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="pt-2 border-t border-slate-800 flex justify-between font-bold text-sm text-white">
+                <span>Saldo por Liquidar:</span>
+                <span className="text-amber-400">Bs. {saldoPendiente.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-400">
+              Al confirmar tu salida, la llave digital se desactivará y se notificará a Recepción y Housekeeping para la inspección y limpieza de la habitación.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
               <button
-                type="button"
-                disabled={cargando}
-                onClick={async () => {
-                  await onRealizarCheckOut();
-                  setModalCheckOutAbierto(false);
-                }}
-                className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-600/30 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
+                onClick={() => setModalCheckOutAbierto(false)}
+                className="py-3 rounded-xl border border-slate-700 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
               >
-                <CreditCard className="w-4 h-4" />
-                <span>{cargando ? 'Procesando...' : 'Confirmar Check-out'}</span>
+                Permanecer en Habitación
+              </button>
+              <button
+                onClick={async () => {
+                  setModalCheckOutAbierto(false);
+                  await onRealizarCheckOut();
+                }}
+                disabled={cargando}
+                className="py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs font-bold transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {cargando ? (
+                  <span>Procesando...</span>
+                ) : (
+                  <>
+                    <FileCheck className="w-4 h-4" />
+                    <span>Confirmar Check-out</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

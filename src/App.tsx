@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LandingPage } from './components/landing/LandingPage';
 import { Login } from './components/auth/Login';
 import { RegistroHuesped } from './components/auth/RegistroHuesped';
 import { DashboardHuesped } from './components/dashboard/DashboardHuesped';
@@ -11,15 +12,15 @@ export type TipoVistaUsuario = 'admin' | 'recepcion' | 'limpieza' | 'huesped';
 
 function AppContent() {
   const { user, rol } = useAuth();
-  // Vistas para usuario no autenticado: siempre inicia en 'login'
-  const [modoAuth, setModoAuth] = useState<'login' | 'registro'>('login');
+  // Vistas para usuario no autenticado: inicia en 'landing' pública
+  const [modoAuth, setModoAuth] = useState<'landing' | 'login' | 'registro'>('landing');
   // Estado para alternar entre vistas operativas
   const [vistaActiva, setVistaActiva] = useState<TipoVistaUsuario | null>(null);
 
-  // Asegurar que al cerrar sesión siempre retorne a la pantalla de Login y resetee vistas
+  // Asegurar que al cerrar sesión retorne a la Landing Page y resetee vistas
   useEffect(() => {
     if (!user) {
-      setModoAuth('login');
+      setModoAuth('landing');
       setVistaActiva(null);
     }
   }, [user]);
@@ -77,7 +78,18 @@ function AppContent() {
     );
   }
 
-  // Pantalla de Login / Registro limpia con imagen de fondo "Fondo.jpg"
+  // 1. Si no está autenticado y está en modo 'landing': Portal 5 Estrellas
+  if (modoAuth === 'landing') {
+    return (
+      <LandingPage
+        onIniciarSesion={() => setModoAuth('login')}
+        onRegistrarse={() => setModoAuth('registro')}
+        onAccesoStaff={() => setModoAuth('login')}
+      />
+    );
+  }
+
+  // 2. Pantalla de Login / Registro con botón para volver al portal del hotel
   return (
     <div
       className="min-h-screen text-slate-100 flex flex-col items-center justify-center p-4 sm:p-6 relative selection:bg-amber-500 selection:text-white bg-cover bg-center bg-no-repeat"
@@ -86,8 +98,18 @@ function AppContent() {
       {/* Capa oscura sofisticada para resaltar el formulario con legibilidad óptima */}
       <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-[3px] pointer-events-none" />
 
-      {/* Contenedor Centrado sin botones ruidosos ni menús */}
-      <div className="relative z-10 w-full flex flex-col items-center justify-center my-auto">
+      {/* Botón superior para volver al portal principal */}
+      <div className="relative z-20 w-full max-w-md flex justify-start mb-4">
+        <button
+          onClick={() => setModoAuth('landing')}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-amber-300 hover:text-amber-200 border border-amber-500/30 text-xs font-bold transition-all shadow-lg cursor-pointer"
+        >
+          <span>← Volver al Portal del Hotel</span>
+        </button>
+      </div>
+
+      {/* Contenedor Centrado */}
+      <div className="relative z-10 w-full flex flex-col items-center justify-center">
         {modoAuth === 'login' ? (
           <Login onIrARegistro={() => setModoAuth('registro')} />
         ) : (

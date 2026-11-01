@@ -35,6 +35,7 @@ export async function obtenerTrabajadores(): Promise<Perfil[]> {
     const { data, error } = await supabase
       .from('perfiles')
       .select('id, nombre_completo, telefono, rol, activo, creado_en')
+      .neq('rol', 'huesped')
       .order('creado_en', { ascending: false });
 
     if (error) {

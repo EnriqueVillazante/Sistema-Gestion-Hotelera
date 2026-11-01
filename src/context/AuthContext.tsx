@@ -82,32 +82,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id', userId)
         .maybeSingle();
 
-      const esAdminPrincipal = userId === '384389b5-72bc-458a-a91e-003860a67f5f';
-
-      if (esAdminPrincipal && (!data || data.rol !== 'admin')) {
-        // Asegurar automáticamente rol admin para el usuario administrador principal
-        const perfilAdmin: Perfil = {
-          id: userId,
-          nombre_completo: data?.nombre_completo || 'Administrador General',
-          telefono: data?.telefono || null,
-          rol: 'admin',
-          activo: true,
-          creado_en: data?.creado_en || new Date().toISOString(),
-          email: data?.email || 'admin@hotelillimani.bo',
-        };
-
-        try {
-          const { email: _emailAdmin, ...perfilDb } = perfilAdmin;
-          await supabase.from('perfiles').upsert(perfilDb);
-        } catch (e) {
-          console.warn('[Auth] Nota al sincronizar perfil admin:', e);
-        }
-
-        setPerfil(perfilAdmin);
-        cache.set(CACHE_KEYS.USER_PROFILE, perfilAdmin, 120);
-        return perfilAdmin;
-      }
-
       if (error) {
         console.error('[Auth] Error obteniendo perfil:', error);
         return null;
@@ -224,14 +198,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (cached && cached.id === data.user.id) {
           setPerfil(cached);
         } else {
-          const esAdmin = data.user.id === '384389b5-72bc-458a-a91e-003860a67f5f';
           const meta = data.user.user_metadata || {};
           const perfilInicial: Perfil = {
             id: data.user.id,
             nombre_completo:
-              meta.nombre_completo || (esAdmin ? 'Administrador General' : (data.user.email?.split('@')[0] || 'Huésped')),
+              meta.nombre_completo || (data.user.email?.split('@')[0] || 'Huésped'),
             telefono: meta.telefono || null,
-            rol: esAdmin ? 'admin' : ((meta.rol as RolUsuario) || 'huesped'),
+            rol: (meta.rol as RolUsuario) || 'huesped',
             activo: true,
             creado_en: new Date().toISOString(),
           };

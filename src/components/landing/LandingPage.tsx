@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { obtenerFotoInteriorHabitacion } from '../../data/hotelData';
 import {
   Wind,
   Droplets,
@@ -59,10 +61,10 @@ const HABITACIONES_SHOWCASE: HabitacionDestacada[] = [
     id: 'suite-presidencial',
     nombre: 'Suite Presidencial Illimani',
     subtitulo: 'La cúspide del lujo andino con balcón panorámico hacia la cumbre nevada.',
-    precioBOB: 1250,
-    capacidad: 'Hasta 3 Huéspedes',
+    precioBOB: 850,
+    capacidad: 'Hasta 4 Huéspedes',
     tamano: '85 m²',
-    imagen: '/fachada_terraza.jpg',
+    imagen: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80',
     amenidades: ['Balcón Privado al Nevado', 'Jacuzzi Hidromasaje', 'Cama King 800 Hilos', 'Mayordomo 24h', 'WiFi 6'],
     destacada: true,
   },
@@ -70,31 +72,31 @@ const HABITACIONES_SHOWCASE: HabitacionDestacada[] = [
     id: 'suite-matrimonial-deluxe',
     nombre: 'Suite Matrimonial Deluxe',
     subtitulo: 'Confort superior, tina de mármol y ventanales acústicos con vista a la ciudad.',
-    precioBOB: 780,
-    capacidad: '2 Huéspedes',
+    precioBOB: 480,
+    capacidad: 'Hasta 3 Huéspedes',
     tamano: '52 m²',
-    imagen: '/fachada_frontal.jpg',
+    imagen: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
     amenidades: ['Cama King Premium', 'Tina Panorámica', 'Desayuno Buffet Incluido', 'Cafetera Nespresso', 'Smart TV 65"'],
   },
   {
     id: 'junior-suite-ejecutiva',
     nombre: 'Junior Suite Ejecutiva',
     subtitulo: 'Diseñada para el viajero de negocios de alto nivel con espacio de trabajo ergonómico.',
-    precioBOB: 590,
-    capacidad: '1 - 2 Huéspedes',
+    precioBOB: 390,
+    capacidad: 'Hasta 3 Huéspedes',
     tamano: '42 m²',
-    imagen: '/fachada_lateral_der.jpg',
+    imagen: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=80',
     amenidades: ['Escritorio Ergonómico', 'Internet Starlink 300 Mbps', 'Coffee Station', 'Sala Lounge Privada', 'Calefacción Central'],
   },
   {
-    id: 'habitacion-doble-familiar',
-    nombre: 'Habitación Doble Familiar Andina',
+    id: 'habitacion-confort',
+    nombre: 'Habitación Confort Planta Baja',
     subtitulo: 'Amplitud, calidez y todos los servicios para disfrutar La Paz en familia.',
-    precioBOB: 480,
-    capacidad: 'Hasta 4 Huéspedes',
-    tamano: '48 m²',
-    imagen: '/fachada.jpg',
-    amenidades: ['2 Camas Queen', 'Minibar Gourmet', 'Climatización Inteligente', 'Caja Fuerte Digital', 'Room Service 24h'],
+    precioBOB: 260,
+    capacidad: '1 Huésped',
+    tamano: '32 m²',
+    imagen: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
+    amenidades: ['Cama Queen', 'Minibar Gourmet', 'Climatización Inteligente', 'Caja Fuerte Digital', 'Room Service 24h'],
   },
 ];
 
@@ -122,9 +124,54 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     cargando: true,
   });
 
-  // Estado de cotizador interactivo
+  // Estado de cotizador interactivo y catálogo real desde Supabase
+  const [habitacionesCatalogo, setHabitacionesCatalogo] = useState<HabitacionDestacada[]>([]);
   const [cotizadorNoches, setCotizadorNoches] = useState<number>(2);
   const [cotizadorHabitacion, setCotizadorHabitacion] = useState<string>(HABITACIONES_SHOWCASE[0].id);
+
+  // Cargar tipos de habitación reales desde la base de datos de Supabase
+  useEffect(() => {
+    let montado = true;
+    async function cargarTiposDesdeBD() {
+      try {
+        const { data, error } = await supabase
+          .from('tipos_habitacion')
+          .select('*')
+          .order('precio_base_noche', { ascending: false });
+
+        if (!error && data && data.length > 0 && montado) {
+          const tamanos = ['85 m²', '52 m²', '42 m²', '38 m²'];
+
+          const mapeadas: HabitacionDestacada[] = data.map((t, idx) => ({
+            id: t.id,
+            nombre: t.nombre,
+            subtitulo: t.descripcion || 'Lujo y confort superior con vistas andinas inigualables.',
+            precioBOB: Number(t.precio_base_noche),
+            capacidad: `Hasta ${t.capacidad_adultos + (t.capacidad_ninos || 0)} Huéspedes`,
+            tamano: tamanos[idx % tamanos.length],
+            imagen: obtenerFotoInteriorHabitacion(t.nombre),
+            amenidades: [
+              'Desayuno Buffet Incluido',
+              'WiFi 6 de Alta Velocidad',
+              'Climatización Inteligente',
+              'Smart TV 65" 4K',
+            ],
+            destacada: idx === 0,
+          }));
+
+          setHabitacionesCatalogo(mapeadas);
+          setCotizadorHabitacion(mapeadas[0].id);
+        }
+      } catch (err) {
+        console.warn('[LandingPage] Consulta de tipos en Supabase:', err);
+      }
+    }
+
+    cargarTiposDesdeBD();
+    return () => {
+      montado = false;
+    };
+  }, []);
 
   // 1. Cargar Clima en Vivo de La Paz vía Open-Meteo
   useEffect(() => {
@@ -231,10 +278,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     return `Bs. ${montoEnBOB}`;
   };
 
+  // Catálogo efectivo: prioridad a la base de datos de Supabase
+  const listaHabitaciones =
+    habitacionesCatalogo.length > 0 ? habitacionesCatalogo : HABITACIONES_SHOWCASE;
+
   // Habitación seleccionada en el cotizador
   const habSeleccionada =
-    HABITACIONES_SHOWCASE.find((h) => h.id === cotizadorHabitacion) || HABITACIONES_SHOWCASE[0];
-  const totalCotizado = habSeleccionada.precioBOB * cotizadorNoches;
+    listaHabitaciones.find((h) => h.id === cotizadorHabitacion) || listaHabitaciones[0];
+  const totalCotizado = (habSeleccionada?.precioBOB || 0) * cotizadorNoches;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-white">
@@ -447,7 +498,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 onChange={(e) => setCotizadorHabitacion(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-2xl text-white text-sm font-semibold focus:outline-none focus:border-amber-400 cursor-pointer"
               >
-                {HABITACIONES_SHOWCASE.map((h) => (
+                {listaHabitaciones.map((h) => (
                   <option key={h.id} value={h.id}>
                     {h.nombre} ({formatearPrecio(h.precioBOB)}/noche)
                   </option>
@@ -514,7 +565,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {HABITACIONES_SHOWCASE.map((h) => (
+          {listaHabitaciones.map((h) => (
             <div
               key={h.id}
               className={`group rounded-3xl overflow-hidden bg-slate-900 border transition-all duration-300 flex flex-col justify-between hover:shadow-2xl hover:shadow-amber-500/10 ${h.destacada
@@ -612,42 +663,78 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Restaurante */}
-            <div className="p-6 rounded-3xl bg-slate-950/80 border border-slate-800 space-y-4 hover:border-amber-500/40 transition-all">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                <UtensilsCrossed className="w-6 h-6" />
+            <div className="group rounded-3xl overflow-hidden bg-slate-950/80 border border-slate-800 hover:border-amber-500/40 transition-all duration-300 flex flex-col shadow-xl">
+              <div className="relative h-48 overflow-hidden">
+                <img
+                  src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1000&q=80"
+                  alt="Restaurante Cumbres del Illimani"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                <div className="absolute top-4 left-4 w-10 h-10 rounded-xl bg-amber-500/20 backdrop-blur-md border border-amber-500/40 flex items-center justify-center text-amber-400">
+                  <UtensilsCrossed className="w-5 h-5" />
+                </div>
               </div>
-              <h3 className="text-lg font-serif font-bold text-white">
-                Restaurante Cumbres del Illimani
-              </h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Cocina andina de vanguardia con ingredientes orgánicos de los valles y Yungas. Desayuno buffet artesanal incluido en todas las tarifas.
-              </p>
+              <div className="p-6 space-y-2 flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-lg font-serif font-bold text-white group-hover:text-amber-400 transition-colors">
+                    Restaurante Cumbres del Illimani
+                  </h3>
+                  <p className="text-xs text-slate-400 leading-relaxed mt-2">
+                    Cocina andina de vanguardia con ingredientes orgánicos de los valles y Yungas. Desayuno buffet artesanal incluido en todas las tarifas.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Skyline Lounge */}
-            <div className="p-6 rounded-3xl bg-slate-950/80 border border-slate-800 space-y-4 hover:border-amber-500/40 transition-all">
-              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
-                <Wine className="w-6 h-6" />
+            <div className="group rounded-3xl overflow-hidden bg-slate-950/80 border border-slate-800 hover:border-amber-500/40 transition-all duration-300 flex flex-col shadow-xl">
+              <div className="relative h-48 overflow-hidden">
+                <img
+                  src="https://images.unsplash.com/photo-1572116469696-31de0f17cc34?auto=format&fit=crop&w=1000&q=80"
+                  alt="Skyline Lounge Bar en Terraza"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                <div className="absolute top-4 left-4 w-10 h-10 rounded-xl bg-blue-500/20 backdrop-blur-md border border-blue-500/40 flex items-center justify-center text-blue-400">
+                  <Wine className="w-5 h-5" />
+                </div>
               </div>
-              <h3 className="text-lg font-serif font-bold text-white">
-                Skyline Lounge Bar en Terraza
-              </h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Coctelería de autor con Singani de altura y la mejor selección de vinos de Tarija. Vista panorámica 360° al atardecer paceño.
-              </p>
+              <div className="p-6 space-y-2 flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-lg font-serif font-bold text-white group-hover:text-blue-300 transition-colors">
+                    Skyline Lounge Bar en Terraza
+                  </h3>
+                  <p className="text-xs text-slate-400 leading-relaxed mt-2">
+                    Coctelería de autor con Singani de altura y la mejor selección de vinos de Tarija. Vista panorámica 360° al atardecer paceño.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Spa & Oxigenoterapia */}
-            <div className="p-6 rounded-3xl bg-slate-950/80 border border-slate-800 space-y-4 hover:border-amber-500/40 transition-all">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                <HeartPulse className="w-6 h-6" />
+            <div className="group rounded-3xl overflow-hidden bg-slate-950/80 border border-slate-800 hover:border-amber-500/40 transition-all duration-300 flex flex-col shadow-xl">
+              <div className="relative h-48 overflow-hidden">
+                <img
+                  src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1000&q=80"
+                  alt="Spa & Bienestar Andino"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                <div className="absolute top-4 left-4 w-10 h-10 rounded-xl bg-emerald-500/20 backdrop-blur-md border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                  <HeartPulse className="w-5 h-5" />
+                </div>
               </div>
-              <h3 className="text-lg font-serif font-bold text-white">
-                Spa & Bienestar Andino
-              </h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Salas de aclimatación con infusiones de coca y muña de cortesía, sauna seco y vapor, masajes descontracturantes para el descanso pleno.
-              </p>
+              <div className="p-6 space-y-2 flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-lg font-serif font-bold text-white group-hover:text-emerald-300 transition-colors">
+                    Spa & Bienestar Andino
+                  </h3>
+                  <p className="text-xs text-slate-400 leading-relaxed mt-2">
+                    Salas de aclimatación con infusiones de coca y muña de cortesía, sauna seco y vapor, masajes descontracturantes para el descanso pleno.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -684,7 +771,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               altitud: '3.600 a 4.090 msnm',
               mejorHora: 'Atardecer (17:30 - 18:30)',
               icono: '🚠',
-              imagen: '/fachada_terraza.jpg',
+              imagen: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/L%C3%ADnea_Roja_de_Mi_Telef%C3%A9rico_en_La_Paz%2C_Bolivia.jpg/1280px-L%C3%ADnea_Roja_de_Mi_Telef%C3%A9rico_en_La_Paz%2C_Bolivia.jpg',
+              imagenFallback: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=1200&q=80',
               desc: 'La red de transporte por cable más alta y moderna del planeta. Disfruta de un recorrido aéreo inigualable surcando las nubes con el imponente Nevado Illimani en el horizonte.',
               puntos: ['Línea Amarilla y Celeste con vista 360°', 'Cabinas vidriadas de última generación', 'Tarjeta prepago de cortesía en recepción'],
             },
@@ -697,7 +785,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               altitud: '3.400 msnm (Ideal Aclimatación)',
               mejorHora: 'Mañanas soleadas (10:00 - 13:00)',
               icono: '🌕',
-              imagen: '/fachada_lateral_der.jpg',
+              imagen: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Valle_de_la_Luna%2C_La_Paz.jpg/1280px-Valle_de_la_Luna%2C_La_Paz.jpg',
+              imagenFallback: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80',
               desc: 'Un paisaje de otro mundo formado por la erosión de millones de años. Camina entre obeliscos y cañones arcillosos en senderos seguros con temperaturas cálidas.',
               puntos: ['Senderos señalizados de baja exigencia', 'Microclima templado en el sur paceño', 'Servicio de transfer privado con chofer'],
             },
@@ -710,7 +799,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               altitud: '3.740 msnm',
               mejorHora: 'Mediodía o Anochecer',
               icono: '🏔️',
-              imagen: '/Fondo.jpg',
+              imagen: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Mirador_Killi_Killi.jpg/1280px-Mirador_Killi_Killi.jpg',
+              imagenFallback: '/Fondo.jpg',
               desc: 'El punto de observación más fotogénico de Sudamérica. Toda la cuenca paceña se despliega en forma de anfiteatro andino con el coloso nevado de 6.438 metros vigilando.',
               puntos: ['Panorámica de 360 grados sin obstáculos', 'Vista nocturna brillante como un manto estelar', 'Punto recomendado por National Geographic'],
             },
@@ -723,7 +813,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               altitud: '3.630 msnm',
               mejorHora: 'Tarde cultural (14:30 - 18:00)',
               icono: '🏛️',
-              imagen: '/fachada_frontal.jpg',
+              imagen: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Calle_Ja%C3%A9n%2C_La_Paz.jpg/1280px-Calle_Ja%C3%A9n%2C_La_Paz.jpg',
+              imagenFallback: 'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?auto=format&fit=crop&w=1200&q=80',
               desc: 'Pasea por la calle colonial mejor preservada de La Paz con arquitectura del siglo XVIII y 4 museos de oro precolombino, junto al legendario mercado de cosmovisión y artesanías finas de alpaca.',
               puntos: ['Textiles de baby alpaca y orfebrería en plata', 'Museos de Metales Preciosos y Costumbrista', 'Cafeterías de autor con café de altura de Yungas'],
             },
@@ -733,10 +824,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               className="group relative rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-amber-500/50 transition-all duration-500 flex flex-col justify-between shadow-xl hover:shadow-2xl hover:shadow-amber-500/10"
             >
               {/* Imagen con Overlay de Gradiente */}
-              <div className="relative h-64 sm:h-72 overflow-hidden">
+              <div className="relative h-64 sm:h-72 overflow-hidden bg-slate-950">
                 <img
                   src={t.imagen}
                   alt={t.nombre}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (t.imagenFallback && target.src !== t.imagenFallback) {
+                      target.src = t.imagenFallback;
+                    }
+                  }}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 brightness-75 group-hover:brightness-90"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />

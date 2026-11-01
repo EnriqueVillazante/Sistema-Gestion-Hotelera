@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { LogoHotel } from '../common/LogoHotel';
 import {
   Users,
+  UserCheck,
   BedDouble,
   UtensilsCrossed,
   TrendingUp,
@@ -12,11 +13,12 @@ import {
   Eye,
 } from 'lucide-react';
 import { GestionTrabajadores } from './GestionTrabajadores';
+import { GestionHuespedes } from './GestionHuespedes';
 import { RackHabitacionesAdmin } from './RackHabitacionesAdmin';
 import { CatalogoServiciosAdmin } from './CatalogoServiciosAdmin';
 import { MetricasHotelAdmin } from './MetricasHotelAdmin';
 
-export type PestanaAdmin = 'trabajadores' | 'rack' | 'servicios' | 'metricas';
+export type PestanaAdmin = 'trabajadores' | 'huespedes' | 'rack' | 'servicios' | 'metricas';
 
 interface DashboardAdminProps {
   onIrAVistaHuesped?: () => void;
@@ -199,6 +201,19 @@ export const DashboardAdmin: React.FC<DashboardAdminProps> = ({
               <span>Personal y Trabajadores</span>
             </button>
 
+            {/* Pestaña: Gestión de Huéspedes */}
+            <button
+              onClick={() => setPestanaActiva('huespedes')}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                pestanaActiva === 'huespedes'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/20'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <UserCheck className="w-4 h-4" />
+              <span>Directorio de Huéspedes</span>
+            </button>
+
             {/* Pestaña: Rack de Habitaciones */}
             <button
               onClick={() => setPestanaActiva('rack')}
@@ -246,6 +261,7 @@ export const DashboardAdmin: React.FC<DashboardAdminProps> = ({
       {/* ==================================================================== */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {pestanaActiva === 'trabajadores' && <GestionTrabajadores />}
+        {pestanaActiva === 'huespedes' && <GestionHuespedes />}
         {pestanaActiva === 'rack' && <RackHabitacionesAdmin />}
         {pestanaActiva === 'servicios' && <CatalogoServiciosAdmin />}
         {pestanaActiva === 'metricas' && <MetricasHotelAdmin />}

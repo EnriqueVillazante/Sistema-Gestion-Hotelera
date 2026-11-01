@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  HABITACIONES_SEED,
-  TIPOS_HABITACION_SEED,
-  type HabitacionMock,
-  type TipoHabitacionMock,
   type VistaFachada,
+  IMAGENES_FACHADA,
+  NOMBRES_VISTA_FACHADA,
+  extraerCoordenadasHotspot,
+  obtenerVistaPrincipalHabitacion,
+  obtenerNombreVistaHabitacion,
 } from '../../data/hotelData';
+import type { HabitacionConTipo } from '../../types/database';
 import {
-  Info,
   CheckCircle,
   Building2,
   Image as ImageIcon,
@@ -18,76 +19,71 @@ import {
   BedDouble,
   ArrowRight,
   RotateCcw,
+  Eye,
 } from 'lucide-react';
 
 interface FachadaHotelInteractivaProps {
-  onSeleccionarHabitacion: (
-    habitacion: HabitacionMock,
-    tipo: TipoHabitacionMock
-  ) => void;
-  habitacionPreseleccionada?: HabitacionMock | null;
-  onMarcarHabitacion?: (habitacion: HabitacionMock) => void;
+  habitaciones: HabitacionConTipo[];
+  habitacionPreseleccionada?: HabitacionConTipo | null;
+  onMarcarHabitacion?: (habitacion: HabitacionConTipo) => void;
+  onSeleccionarHabitacion: (habitacion: HabitacionConTipo) => void;
   onLimpiarSeleccion?: () => void;
-  habitaciones?: HabitacionMock[];
 }
 
 export const FachadaHotelInteractiva: React.FC<FachadaHotelInteractivaProps> = ({
-  onSeleccionarHabitacion,
+  habitaciones,
   habitacionPreseleccionada,
   onMarcarHabitacion,
+  onSeleccionarHabitacion,
   onLimpiarSeleccion,
-  habitaciones,
 }) => {
-  const [habitacionHover, setHabitacionHover] = useState<HabitacionMock | null>(null);
+  const [habitacionHover, setHabitacionHover] = useState<HabitacionConTipo | null>(null);
   const [modoVista, setModoVista] = useState<VistaFachada>('frontal');
   const [filtroPiso, setFiltroPiso] = useState<number | 'todos'>('todos');
   const [mostrarInfoTerraza, setMostrarInfoTerraza] = useState(false);
   const [mostrarInfoLobby, setMostrarInfoLobby] = useState(false);
 
-  const listaHabitaciones = habitaciones || HABITACIONES_SEED;
+  // Sincronizar automáticamente la vista cuando se selecciona una habitación desde el exterior (ej. catálogo)
+  useEffect(() => {
+    if (habitacionPreseleccionada?.coordenadas_por_vista) {
+      const vistaHab = obtenerVistaPrincipalHabitacion(habitacionPreseleccionada.coordenadas_por_vista);
+      const coordsEnVistaActual = extraerCoordenadasHotspot(habitacionPreseleccionada.coordenadas_por_vista, modoVista);
+      if (!coordsEnVistaActual) {
+        setModoVista(vistaHab);
+      }
+    }
+  }, [habitacionPreseleccionada]);
 
-  // Imagen según la vista activa
-  const imagenFachada =
-    modoVista === 'frontal'
-      ? '/fachada_frontal.jpg'
-      : modoVista === 'lateral_izq'
-      ? '/fachada_lateral_izq.jpg'
-      : '/fachada_lateral_der.jpg';
+  // Imagen fotográfica real según la vista activa (frontal, lateral derecho, lateral izquierdo)
+  const imagenFachada = IMAGENES_FACHADA[modoVista] || '/fachada_frontal.jpg';
 
-  // Filtrar estrictamente solo las habitaciones que pertenecen a la vista activa
-  const habitacionesMostradas = listaHabitaciones.filter((hab) => {
-    const coords = hab.coordenadasPorVista?.[modoVista];
+  // Filtrar estrictamente solo las habitaciones que pertenecen a la vista activa y piso
+  const habitacionesMostradas = habitaciones.filter((hab) => {
+    const coords = extraerCoordenadasHotspot(hab.coordenadas_por_vista, modoVista);
     if (!coords) return false;
     if (filtroPiso !== 'todos' && hab.piso !== filtroPiso) return false;
     return true;
   });
 
-  // Obtener información del tipo de habitación
-  const obtenerTipo = (tipoId: string): TipoHabitacionMock => {
-    return (
-      TIPOS_HABITACION_SEED.find((t) => t.id === tipoId) ||
-      TIPOS_HABITACION_SEED[0]
-    );
-  };
-
-  const handleClicHabitacion = (hab: HabitacionMock) => {
+  const handleClicHabitacion = (hab: HabitacionConTipo) => {
     if (hab.estado !== 'disponible') return;
-    const tipo = obtenerTipo(hab.tipo_id);
 
-    // Si ya estaba marcada en la fachada, el siguiente clic abre la confirmación de fechas
     if (habitacionPreseleccionada?.id === hab.id) {
-      onSeleccionarHabitacion(hab, tipo);
+      onSeleccionarHabitacion(hab);
     } else if (onMarcarHabitacion) {
-      // Primer clic: marcar visualmente sobre la fachada
       onMarcarHabitacion(hab);
     } else {
-      onSeleccionarHabitacion(hab, tipo);
+      onSeleccionarHabitacion(hab);
     }
   };
 
-  const tipoHabMarcada = habitacionPreseleccionada
-    ? obtenerTipo(habitacionPreseleccionada.tipo_id)
+  const tipoHabMarcada = habitacionPreseleccionada?.tipos_habitacion;
+  const vistaHabMarcada = habitacionPreseleccionada
+    ? obtenerVistaPrincipalHabitacion(habitacionPreseleccionada.coordenadas_por_vista)
     : null;
+  const nombreVistaHabMarcada = habitacionPreseleccionada
+    ? obtenerNombreVistaHabitacion(habitacionPreseleccionada.coordenadas_por_vista)
+    : '';
 
   return (
     <div className="w-full space-y-6">
@@ -211,12 +207,12 @@ export const FachadaHotelInteractiva: React.FC<FachadaHotelInteractivaProps> = (
 
       {/* Contenedor Principal de la Fachada Interactiva */}
       <div className="relative w-full rounded-3xl overflow-hidden shadow-2xl border-2 border-slate-800 bg-slate-950 select-none group/fachada">
-        {/* Barra superior de información rápida al pasar el cursor (Hover) - sin tapar las ventanas */}
+        {/* Barra superior de información rápida al pasar el cursor (Hover) */}
         <div className="absolute top-3 left-3 right-3 z-30 pointer-events-none flex items-center justify-between">
           <div className="px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-slate-800 text-[11px] text-slate-300 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
             <span className="font-semibold text-white">
-              {modoVista === 'frontal' ? 'Fachada Frontal Principal' : modoVista === 'lateral_izq' ? 'Fachada Lateral Izquierda' : 'Fachada Lateral Derecha'}
+              {NOMBRES_VISTA_FACHADA[modoVista]}
             </span>
           </div>
 
@@ -224,9 +220,11 @@ export const FachadaHotelInteractiva: React.FC<FachadaHotelInteractivaProps> = (
             <div className="px-3 py-1 rounded-full bg-slate-950/90 backdrop-blur-md border border-amber-500/50 text-xs text-white flex items-center gap-2 shadow-xl animate-in fade-in duration-150">
               <span className="font-mono font-black text-amber-400">Hab. {habitacionHover.numero}</span>
               <span className="text-slate-400">•</span>
-              <span className="text-slate-200">{obtenerTipo(habitacionHover.tipo_id).nombre}</span>
+              <span className="text-slate-200">{habitacionHover.tipos_habitacion?.nombre || 'Habitación'}</span>
               <span className="text-slate-400">•</span>
-              <span className="font-extrabold text-amber-300">Bs. {obtenerTipo(habitacionHover.tipo_id).precio_base_noche}/noche</span>
+              <span className="font-extrabold text-amber-300">
+                Bs. {habitacionHover.tipos_habitacion?.precio_base_noche || 0}/noche
+              </span>
             </div>
           )}
         </div>
@@ -242,15 +240,15 @@ export const FachadaHotelInteractiva: React.FC<FachadaHotelInteractivaProps> = (
           {/* Sombra de contraste para destacar los hotspots */}
           <div className="absolute inset-0 bg-slate-950/20 pointer-events-none" />
 
-          {/* Zonas Interactivas: Hotspots sobre ventanas y balcones */}
+          {/* Zonas Interactivas: Hotspots sobre ventanas y balcones vinculados a la Base de Datos */}
           {habitacionesMostradas.map((hab) => {
-            const coords = hab.coordenadasPorVista?.[modoVista];
+            const coords = extraerCoordenadasHotspot(hab.coordenadas_por_vista, modoVista);
             if (!coords) return null;
 
-            const tipo = obtenerTipo(hab.tipo_id);
             const esSeleccionada = habitacionPreseleccionada?.id === hab.id;
             const esHover = habitacionHover?.id === hab.id;
             const estaDisponible = hab.estado === 'disponible';
+            const nombreTipo = hab.tipos_habitacion?.nombre || 'Habitación';
 
             return (
               <div
@@ -273,9 +271,9 @@ export const FachadaHotelInteractiva: React.FC<FachadaHotelInteractivaProps> = (
                       : 'border-2 border-emerald-400/60 bg-emerald-950/15 hover:bg-emerald-500/25'
                     : 'border-2 border-rose-500/60 bg-rose-950/40 cursor-not-allowed opacity-75'
                 }`}
-                title={`Habitación ${hab.numero} - ${tipo.nombre}`}
+                title={`Habitación ${hab.numero} - ${nombreTipo}`}
               >
-                {/* Placa compacta con número y punto de estado - no desborda ni colisiona */}
+                {/* Placa compacta con número y punto de estado */}
                 <div
                   className={`px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-mono font-black shadow-md border flex items-center justify-center gap-1.5 transition-transform ${
                     esSeleccionada
@@ -412,7 +410,7 @@ export const FachadaHotelInteractiva: React.FC<FachadaHotelInteractivaProps> = (
       </div>
 
       {/* TARJETA DESTACADA: HABITACIÓN MARCADA EN LA FACHADA */}
-      {habitacionPreseleccionada && tipoHabMarcada && (
+      {habitacionPreseleccionada && (
         <div className="p-6 rounded-3xl bg-gradient-to-r from-amber-500/15 via-slate-900 to-amber-500/15 border-2 border-amber-500/60 shadow-2xl animate-in zoom-in-95 duration-200">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="flex items-start gap-4">
@@ -422,52 +420,62 @@ export const FachadaHotelInteractiva: React.FC<FachadaHotelInteractivaProps> = (
               </div>
 
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
                     <CheckCircle className="w-3 h-3 text-emerald-400" />
                     <span>Habitación Marcada en Fachada</span>
                   </span>
                   <span className="text-xs text-slate-400">Piso {habitacionPreseleccionada.piso}</span>
+                  <span className="text-xs text-amber-400/90 font-medium">• {nombreVistaHabMarcada}</span>
                 </div>
 
                 <h4 className="text-xl font-serif font-black text-white tracking-tight">
-                  {tipoHabMarcada.nombre}
+                  {tipoHabMarcada?.nombre || 'Habitación Illimani'}
                 </h4>
 
                 <p className="text-xs text-slate-300 flex items-center gap-2">
                   <MapPin className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-                  <span>{habitacionPreseleccionada.caracteristicas.join(' • ')}</span>
+                  <span>{(habitacionPreseleccionada.caracteristicas || []).join(' • ') || 'Confort y lujo'}</span>
                 </p>
+
+                {vistaHabMarcada && vistaHabMarcada !== modoVista && (
+                  <button
+                    type="button"
+                    onClick={() => setModoVista(vistaHabMarcada)}
+                    className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold text-[11px] border border-amber-500/40 transition-colors cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Ver ubicación en {nombreVistaHabMarcada}</span>
+                  </button>
+                )}
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-4 w-full md:w-auto justify-between md:justify-end">
               <div className="text-left md:text-right">
                 <span className="text-2xl font-black text-amber-400 block font-serif">
-                  Bs. {tipoHabMarcada.precio_base_noche}
+                  Bs. {tipoHabMarcada?.precio_base_noche || 0}
                 </span>
                 <span className="text-xs text-slate-400">por noche (impuestos incl.)</span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 {onLimpiarSeleccion && (
                   <button
-                    type="button"
                     onClick={onLimpiarSeleccion}
-                    className="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                    title="Desmarcar y elegir otra ventana"
+                    className="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
+                    title="Desmarcar habitación"
                   >
                     <RotateCcw className="w-4 h-4" />
                   </button>
                 )}
 
                 <button
-                  type="button"
-                  onClick={() => onSeleccionarHabitacion(habitacionPreseleccionada, tipoHabMarcada)}
-                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-sm shadow-xl shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                  onClick={() => onSeleccionarHabitacion(habitacionPreseleccionada)}
+                  className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm shadow-xl shadow-amber-500/25 flex items-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
                 >
                   <BedDouble className="w-4 h-4" />
-                  <span>Hospedarme en Hab. {habitacionPreseleccionada.numero}</span>
+                  <span>Confirmar Fechas de Estancia</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -475,29 +483,6 @@ export const FachadaHotelInteractiva: React.FC<FachadaHotelInteractivaProps> = (
           </div>
         </div>
       )}
-
-      {/* Leyenda de Referencia de la Fachada */}
-      <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-400">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-md bg-emerald-500/40 border border-emerald-400" />
-            <span className="text-slate-300">Habitación Libre (Toca para marcar)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-md bg-amber-400 border border-amber-300 ring-2 ring-amber-400/40" />
-            <span className="text-amber-300 font-semibold">Tu Habitación Marcada</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-md bg-rose-600/40 border border-rose-500" />
-            <span className="text-slate-300">Ocupada</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-slate-400 text-[11px]">
-          <Info className="w-3.5 h-3.5 text-amber-400" />
-          <span>Balcones coloniales en madera noble tallada en los pisos 2 y 3</span>
-        </div>
-      </div>
     </div>
   );
 };

@@ -1,0 +1,54 @@
+id,nombre,categoria,precio_unitario,activo,creado_en
+0446b686-d934-49a4-9074-198a2c6291f5,Cóctel Yungueñito,alimentos_bebidas,28.00,true,2026-10-27 13:08:41.179811+00
+05fd6ce4-af5e-4fcc-9d70-616fb3e99cb5,Lavandería Express - Por Prenda,lavanderia,15.00,true,2026-10-27 13:08:41.179811+00
+0dccf06e-ff68-465b-b1fc-c0d713238de7,Café Americano Yungueño,alimentos_bebidas,15.00,true,2026-10-27 13:08:41.179811+00
+0e42e670-fe2e-40d4-843e-f9adc90cd446,Sesión Privada de Sauna Seco y Vapor (45 min),Spa & Relax,90.00,true,2026-10-25 19:32:09.162191+00
+0f729bbf-6419-4c6d-a81c-831dd7667a2f,Chocolate Caliente Tradicional,alimentos_bebidas,18.00,true,2026-10-27 13:08:41.179811+00
+12388bf9-53da-482f-b57c-8e477e360b6a,Papas Fritas Lay's,minibar,12.00,true,2026-10-27 13:08:41.179811+00
+167eb8f6-7a52-4981-868b-017850f8358e,Cerveza Huari Tradicional (330 ml),minibar,22.00,true,2026-10-27 13:08:41.179811+00
+2f730547-36df-4e56-a653-be0949d1c811,Chocolates Para Ti Surtidos,minibar,28.00,true,2026-10-27 13:08:41.179811+00
+304ef9a9-93da-48d0-96ac-6058ccdf6cac,Cóctel Chuflay Tradicional,alimentos_bebidas,30.00,true,2026-10-27 13:08:41.179811+00
+326e026d-a36a-4962-9123-bcf9aa4224be,Traslado Terminal - Hotel,transporte,45.00,true,2026-10-27 13:08:41.179811+00
+357392fe-6181-45cd-80c3-51c8ca2ab1a3,Mix de Frutos Secos y Chocolates Para Ti,Minibar,28.00,true,2026-10-25 19:32:09.162191+00
+373f4701-05f2-4d6d-bfce-1f964dab0051,Servicio de Lavado y Planchado Express (Carga 5kg),Lavandería,75.00,true,2026-10-25 19:32:09.162191+00
+3fcb2ff1-6094-44e0-97c8-f4efa7366006,Custodia de Equipaje Post Check-out,servicio_extra,20.00,true,2026-10-27 13:08:41.179811+00
+43bc88f0-855f-4f0e-9ab6-cfb54cab966d,Kit de Alivio Soroche,servicio_extra,35.00,true,2026-10-27 13:08:41.179811+00
+4e7d0635-0728-412f-ba76-1d0995b0d1fa,Late Check-out (Hasta las 16:00),servicio_extra,80.00,true,2026-10-27 13:08:41.179811+00
+517713f4-aa8c-4498-b790-43f83a34c625,Salteña Paceña de Pollo,alimentos_bebidas,14.00,true,2026-10-27 13:08:41.179811+00
+54628538-b604-4b86-b389-784fc6d49c9e,Marraqueta con Queso Criollo,alimentos_bebidas,15.00,true,2026-10-27 13:08:41.179811+00
+5eaf57fe-2b0c-45ff-afbc-40c7066946f7,Gaseosa Papaya Salvietti (500 ml),minibar,10.00,true,2026-10-27 13:08:41.179811+00
+609c5254-0aee-4e46-9f91-fac7eb99c70a,Botella de Vino Tinto Gran Reserva (Tarija),Minibar,160.00,true,2026-10-25 19:32:09.162191+00
+621d0009-7e0b-4b96-a313-cc0ae531f8c0,Jugo Natural de Naranja,alimentos_bebidas,15.00,true,2026-10-27 13:08:41.179811+00
+65915b31-6a94-4ccf-946f-7bda90dc855e,Cerveza Paceña Pilsener (330 ml),minibar,18.00,true,2026-10-27 13:08:41.179811+00
+6f671ee3-a1ed-4709-985b-1b24a63d081f,Café con Leche y Marraqueta,alimentos_bebidas,20.00,true,2026-10-27 13:08:41.179811+00
+71ec3e63-5f8d-462d-9dac-368fd51617d3,Cerveza Huari Tradicional (Pack x2),Minibar,35.00,true,2026-10-25 19:32:09.162191+00
+72a35678-95b0-48de-ab29-620d3051287e,Masaje Relajante con Piedras Calientes Andinas (60 min),Spa & Relax,190.00,true,2026-10-25 19:32:09.162191+00
+73447905-06d2-4535-8440-ce35283f4862,Agua Mineral con Gas (600 ml),minibar,8.00,true,2026-10-27 13:08:41.179811+00
+78d3177e-12c7-42a9-a2ae-038476e468eb,Mate de Coca Tradicional,alimentos_bebidas,10.00,true,2026-10-27 13:08:41.179811+00
+7946b160-1ab6-4055-b4ae-26d1f3c280d4,Cena Gourmet Illimani (3 Tiempos),Restaurante,145.00,true,2026-10-25 19:32:09.162191+00
+7a47ba33-0418-4af0-8e54-0ffd766abcfe,Vino Blanco Torrontés (Botella 750 ml),minibar,85.00,true,2026-10-27 13:08:41.179811+00
+7bbe324e-95a1-42d6-b27f-954e650423b6,Plato Silpancho Cochabambino,alimentos_bebidas,45.00,true,2026-10-27 13:08:41.179811+00
+7c139b30-fcfe-4ac9-bf05-d3d344be4dbc,Gaseosa Coca-Cola (500 ml),minibar,12.00,true,2026-10-27 13:08:41.179811+00
+7c4f925c-1746-4d5a-8d3d-5881334bd01b,Mocochinchi Casero,alimentos_bebidas,10.00,true,2026-10-27 13:08:41.179811+00
+7dfb35ce-c0ff-428c-b3ff-dc3b5c4e41a8,Té Trimate Andino,alimentos_bebidas,12.00,true,2026-10-27 13:08:41.179811+00
+810c5d17-75e0-421b-9d7f-b982d1890890,Planchado al Vapor (Por Prenda),lavanderia,12.00,true,2026-10-27 13:08:41.179811+00
+8773d6ba-887b-4ed2-a564-06f356e746ae,Copa de Singani Los Parrales,alimentos_bebidas,25.00,true,2026-10-27 13:08:41.179811+00
+8d77a787-d8c2-4051-a89b-a1e8d65da0f5,Sándwich Caliente de Lomito,alimentos_bebidas,35.00,true,2026-10-27 13:08:41.179811+00
+959b7044-821f-4647-b1f9-177602be5c22,Api Morado con Pastel de Queso,alimentos_bebidas,25.00,true,2026-10-27 13:08:41.179811+00
+9b358855-f058-45c8-a35f-98f143f8a687,Té de Muña Digestivo,alimentos_bebidas,10.00,true,2026-10-27 13:08:41.179811+00
+a3ec612d-f997-4986-adfa-d12aa7e181e1,Early Check-in (Antes de las 10:00),servicio_extra,70.00,true,2026-10-27 13:08:41.179811+00
+b53b23ea-4770-4ee3-9fce-233d36eae711,Sándwich de Chola Completo,alimentos_bebidas,30.00,true,2026-10-27 13:08:41.179811+00
+b9ec9d2e-dd0a-42b1-98ce-5ba7a2614d35,Lavandería Completa (Bolsa 5 kg),lavanderia,60.00,true,2026-10-27 13:08:41.179811+00
+becb09f5-7267-40f8-9dfe-62ecb4c504ef,Energizante Red Bull (250 ml),minibar,25.00,true,2026-10-27 13:08:41.179811+00
+bee280f5-1e0f-4e2f-b2ba-9f5724970660,Sopa de Maní Típica,alimentos_bebidas,28.00,true,2026-10-27 13:08:41.179811+00
+c272fa42-e862-4696-8772-417d716a08e2,Vino Tinto Tannat (Botella 750 ml),minibar,95.00,true,2026-10-27 13:08:41.179811+00
+c391464c-cc98-4cc4-b1a5-77a4e3785e02,Traslado Hotel - Aeropuerto El Alto,transporte,120.00,true,2026-10-27 13:08:41.179811+00
+cb3682d6-2000-449a-8c80-d2e0ad141049,Juego Extra de Toallas,servicio_extra,15.00,true,2026-10-27 13:08:41.179811+00
+d61ae3ba-3e6c-44fe-b57c-f5165cf219d0,Planchado de Traje Ejecutivo o Vestido,Lavandería,40.00,true,2026-10-25 19:32:09.162191+00
+debaad3c-cab7-475a-a3af-d71c7d34dc50,Cerveza Paceña Centenario (330 ml),minibar,20.00,true,2026-10-27 13:08:41.179811+00
+e21fc9a7-f7bb-4455-ab53-cbd41ad5e5ca,City Tour Teleférico (Por Huésped),tour,150.00,true,2026-10-27 13:08:41.179811+00
+e5732946-e672-49f0-a3da-d83454cc57d8,Agua Mineral sin Gas (600 ml),minibar,8.00,true,2026-10-27 13:08:41.179811+00
+e830058c-0bf0-4850-9f34-52020ddb7504,Desayuno Americano a la Habitación,Restaurante,55.00,true,2026-10-25 19:32:09.162191+00
+f4a099e9-37dc-4979-baff-65ef15295000,Oxigenoterapia (Sesión 1 Hora),servicio_extra,50.00,true,2026-10-27 13:08:41.179811+00
+f856f800-8b18-4927-81b3-b902a76269b7,Salteña Paceña de Carne,alimentos_bebidas,14.00,true,2026-10-27 13:08:41.179811+00
+fdc44cbd-8058-40bb-87cd-45559ab9fb16,Club Sándwich Tradicional con Papas,Restaurante,48.00,true,2026-10-25 19:32:09.162191+00

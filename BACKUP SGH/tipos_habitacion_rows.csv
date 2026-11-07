@@ -1,0 +1,5 @@
+id,nombre,descripcion,capacidad_adultos,capacidad_ninos,precio_base_noche,creado_en
+a1111111-1111-1111-1111-111111111111,Suite Presidencial Illimani,"Lujo supremo con vista panorámica ininterrumpida al nevado Illimani, jacuzzi privado, cama King California y sala de estar ejecutiva.",2,2,850.00,2026-10-25 19:32:09.162191+00
+a2222222-2222-2222-2222-222222222222,Habitación Matrimonial Deluxe con Balcón,"Diseño contemporáneo con balcón colonial de madera noble tallada, cama Queen y cálida iluminación andina.",2,1,480.00,2026-10-25 19:32:09.162191+00
+a3333333-3333-3333-3333-333333333333,Doble Ejecutiva Twin con Balcón,"Espaciosa y funcional, ideal para viajes corporativos o en pareja, con dos camas de plaza y media y balcón con flores.",2,1,390.00,2026-10-25 19:32:09.162191+00
+a4444444-4444-4444-4444-444444444444,Habitación Confort Planta Baja,"Espacio cálido y silencioso en planta baja, con ventanal colonial de ladrillo visto y todas las comodidades modernas.",1,0,260.00,2026-10-25 19:32:09.162191+00

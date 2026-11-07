@@ -1,0 +1,6 @@
+id,usuario_id,nombres,apellidos,tipo_documento,documento_identidad,nacionalidad,telefono,email,creado_en
+06dcbc0e-2759-4014-8ece-599fb35b2905,648a951c-7f36-4bc0-9b7a-210a643ea563,Hugo,Enrique Villazante Tantani,CI,DOC-590885,Boliviana,78883325,enrique@gmail.com,2026-11-02 06:56:32.719368+00
+3128a1ef-50ff-4f29-a875-e43bd1ba70e5,b201609f-2a23-4c51-807b-32a4f18fbeea,ado,villa,CI,8304320,Boliviana,68046105,adovil66@gmail.com,2026-11-02 06:34:20.651866+00
+598edaf9-8f9c-4454-b6ea-1e67c9d73f81,1786a65a-3f87-4635-8de8-1cdaa40dd9e0,denisse,Maya,CI,8535456,Boliviana,78654214,denisse@gmail.com,2026-11-03 22:17:31.924899+00
+5d28f726-98cd-486f-a039-57edc35bd2b2,0796e8d4-2b37-416c-a639-fddcad3a27a5,Shirley,Perez,CI,1002568,Boliviana,78563298,shirley@gmail.com,2026-11-01 21:15:17.427287+00
+9ea925eb-96be-4f3b-a815-77d941a2fde3,,adolfito,made,CI,68046105,Boliviana,77158785,adolfito@gmail.com,2026-11-03 22:10:20.567252+00

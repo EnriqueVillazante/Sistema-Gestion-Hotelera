@@ -9,5 +9,13 @@ export default defineConfig({
     watch: {
       ignored: ['**/dist/**', '**/.git/**'],
     },
+    proxy: {
+      // Proxy local hacia Ollama para evitar bloqueos de CORS en el navegador
+      '/api/ollama': {
+        target: 'http://127.0.0.1:11434',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/ollama/, ''),
+      },
+    },
   },
 })

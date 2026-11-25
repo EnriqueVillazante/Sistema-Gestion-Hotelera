@@ -7,6 +7,7 @@ import { DashboardHuesped } from './components/dashboard/DashboardHuesped';
 import { DashboardAdmin } from './components/admin/DashboardAdmin';
 import { DashboardRecepcion } from './components/recepcion/DashboardRecepcion';
 import { DashboardLimpieza } from './components/limpieza/DashboardLimpieza';
+import { ChatbotHotel } from './components/common/ChatbotHotel';
 
 export type TipoVistaUsuario = 'admin' | 'recepcion' | 'limpieza' | 'huesped';
 
@@ -124,6 +125,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppContent />
+      <ChatbotHotel />
     </AuthProvider>
   );
 }
